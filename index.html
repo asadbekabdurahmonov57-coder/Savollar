@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interaktiv Variantli Test Platformasi</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f6f9;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 25px rgba(0,0,0,0.06);
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 5px;
+            font-size: 28px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 30px;
+            font-size: 15px;
+        }
+        
+        #loading-status {
+            text-align: center;
+            font-size: 18px;
+            color: #2980b9;
+            padding: 50px;
+            font-weight: bold;
+        }
+
+        /* Test Bloki Uslubi */
+        .question-block {
+            margin-bottom: 25px;
+            padding: 20px;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            background-color: #fff;
+            transition: all 0.3s ease;
+        }
+        .question-block:hover {
+            border-color: #cbd5e1;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+        }
+        .question-text {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+        .options-list {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+        .option-item {
+            margin-bottom: 10px;
+        }
+        
+        /* Variant tanlash qismi dizayni */
+        .option-item label {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
+            color: #334155;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+        
+        /* Sichqoncha variant ustiga kelganda */
+        .option-item label:hover {
+            background: #f1f5f9;
+            border-color: #cbd5e1;
+        }
+        
+        /* Variant tanlangandagi holat */
+        .option-item input[type="radio"]:checked + span {
+            font-weight: 600;
+        }
+        .option-item input[type="radio"]:checked ~ .opt-text {
+            color: #0f172a;
+        }
+        .option-item input[type="radio"] {
+            margin-right: 12px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: #3b82f6; /* Zamonaviy ko'k rangli radio tugma */
+        }
+        
+        /* Tekshirilgandan keyin bosishni taqiqlash */
+        .option-item input[type="radio"]:disabled,
+        .option-item label.disabled-label {
+            cursor: not-allowed;
+        }
+        .option-item label.disabled-label:hover {
+            background: #f8fafc;
+            border-color: #e2e8f0;
+        }
+
+        /* Tugmalar paneli */
+        .btn-container {
+            text-align: center;
+            margin-top: 35px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+        button {
+            padding: 14px 32px;
+            font-size: 15px;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .btn-submit { background-color: #10b981; color: white; box-shadow: 0 2px 5px rgba(16,185,129,0.2); }
+        .btn-submit:hover { background-color: #059669; }
+        .btn-submit:disabled { background-color: #94a3b8; cursor: not-allowed; box-shadow: none; }
+        
+        .btn-reset { background-color: #64748b; color: white; }
+        .btn-reset:hover { background-color: #475569; }
+
+        /* Natija oynasi */
+        #result {
+            margin-top: 30px;
+            padding: 22px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 19px;
+            font-weight: bold;
+            display: none;
+            background-color: #ecfdf5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+        
+        /* Tekshiruvdan keyingi Ranglar (To'g'ri/Xato) */
+        .correct-style {
+            background-color: #d1fae5 !important; /* Och yashil */
+            color: #065f46 !important;
+            border-color: #34d399 !important;
+            font-weight: bold;
+        }
+        .wrong-style {
+            background-color: #fee2e2 !important; /* Och qizil */
+            color: #991b1b !important;
+            border-color: #f87171 !important;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>📝 Onlayn Test Tizimi</h1>
+    <div class="subtitle">Variantlardan birini tanlang va bilimingizni sinab ko'ring</div>
+    
+    <div id="loading-status">Savollar va variantlar yuklanmoqda...</div>
+
+    <div id="quiz-panel" style="display: none;">
+        <div id="quiz-wrapper"></div>
+        
+        <div class="btn-container">
+            <button class="btn-submit" id="btn-check" onclick="checkAnswers()">Natijani Tekshirish</button>
+            <button class="btn-reset" onclick="resetQuiz()">Qayta yechish</button>
+        </div>
+
+        <div id="result"></div>
+    </div>
+</div>
+
+<script>
+    let questionsData = [];
+
+    // Sahifa yuklanishi bilan faylni o'qishni boshlaymiz
+    window.addEventListener('DOMContentLoaded', () => {
+        loadTestsFromFile();
+    });
+
+    async function loadTestsFromFile() {
+        try {
+            const response = await fetch('testlar.txt');
+            if (!response.ok) {
+                throw new Error("testlar.txt fayli topilmadi.");
+            }
+            const textData = await response.text();
+            
+            // Matnni tahlil qilib massivga yig'amiz
+            parseTestData(textData);
+            
+            if (questionsData.length === 0) {
+                document.getElementById('loading-status').innerText = "Fayl ichida yaroqli test variantlari topilmadi.";
+                return;
+            }
+
+            document.getElementById('loading-status').style.display = 'none';
+            document.getElementById('quiz-panel').style.display = 'block';
+            
+            generateQuiz();
+
+        } catch (error) {
+            console.error(error);
+            document.getElementById('loading-status').innerHTML = 
+                `<span style="color:#ef4444;">Xatolik yuk berdi: ${error.message}<br>Papka ichida 'testlar.txt' fayli borligini tekshiring!</span>`;
+        }
+    }
+
+    function parseTestData(text) {
+        // Savollarni tartib raqami yoki yangi satrdagi "Savol:" tushunchasiga ko'ra ajratamiz
+        // Worddan ko'chirilganda raqamli bo'lishi mumkinligi uchun variantlarni qidiradi
+        const blocks = text.split(/(?=\d+\.\s|Savol:\s*)/g);
+        let idCounter = 1;
+
+        blocks.forEach(block => {
+            let lines = block.trim().split('\n').map(line => line.trim()).filter(line => line.length > 0);
+            if (lines.length < 2) return;
+
+            // Birinchi qator - Savol matni (boshidagi raqam yoki Savol: so'zini tozalaymiz)
+            let questionText = lines[0].replace(/^\d+\.\s*/, "").replace(/^Savol:\s*/i, "").trim(); 
+            
+            let correctText = "";
+            let incorrectOptions = [];
+
+            // Qolgan qatorlar - variantlar
+            for (let i = 1; i < lines.length; i++) {
+                let optionText = lines[i];
+                
+                // Variant boshidagi * yoki variant harflarini (A), B), c) ) tozalash
+                optionText = optionText.replace(/^[\*\-\u2022]\s*/, "").replace(/^[A-Za-Dae-z][\.\)]\s*/, "").trim();
+
+                if (optionText.includes("(To'g'ri javob)") || optionText.includes("(Toʻgʻri javob)")) {
+                    optionText = optionText.replace(/\(To'g'ri javob\)/g, "").replace(/\(Toʻgʻri javob\)/g, "").trim();
+                    correctText = optionText;
+                } else {
+                    incorrectOptions.push(optionText);
+                }
+            }
+
+            if (correctText !== "") {
+                questionsData.push({
+                    id: idCounter++,
+                    question: questionText,
+                    correct: correctText,
+                    incorrect: incorrectOptions
+                });
+            }
+        });
+    }
+
+    // Variantlarni tasodifiy aralashtirish funksiyasi
+    function shuffle(array) {
+        let currentIndex = array.length, randomIndex;
+        while (currentIndex != 0) {
+            randomIndex = Math.floor(Math.random() * currentIndex);
+            currentIndex--;
+            [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+        }
+        return array;
+    }
+
+    const quizWrapper = document.getElementById('quiz-wrapper');
+    const resultDiv = document.getElementById('result');
+
+    function generateQuiz() {
+        quizWrapper.innerHTML = "";
+        resultDiv.style.display = "none";
+        document.getElementById('btn-check').disabled = false;
+
+        // Savollarni har safar aralashtirib chiqarish
+        const shuffledQuestions = shuffle([...questionsData]);
+
+        shuffledQuestions.forEach((q, qIndex) => {
+            // To'g'ri va noto'g'ri variantlarni qo'shib aralashtiramiz
+            const allOptions = shuffle([q.correct, ...q.incorrect]);
+
+            const questionBlock = document.createElement('div');
+            questionBlock.className = 'question-block';
+
+            const qText = document.createElement('div');
+            qText.className = 'question-text';
+            qText.innerText = `${qIndex + 1}. ${q.question}`;
+            questionBlock.appendChild(qText);
+
+            const optionsList = document.createElement('ul');
+            optionsList.className = 'options-list';
+
+            allOptions.forEach((option, oIndex) => {
+                const optionItem = document.createElement('li');
+                optionItem.className = 'option-item';
+
+                const labelId = `lbl_${qIndex}_${oIndex}`;
+
+                // HTML Radio elementini yaratish (har bir savol guruhining o'z "name" atributi bo'ladi)
+                optionItem.innerHTML = `
+                    <label id="${labelId}">
+                        <input type="radio" name="question_${qIndex}" value="${option.replace(/"/g, '&quot;')}" data-label-id="${labelId}" data-correct-val="${q.correct.replace(/"/g, '&quot;')}">
+                        <span class="opt-text">${option}</span>
+                    </label>
+                `;
+                optionsList.appendChild(optionItem);
+            });
+
+            questionBlock.appendChild(optionsList);
+            quizWrapper.appendChild(questionBlock);
+        });
+    }
+
+    function checkAnswers() {
+        let score = 0;
+        const blocksCount = quizWrapper.querySelectorAll('.question-block').length;
+
+        // Barcha radio tugmalarni va labellarni qulflash
+        const allRadios = quizWrapper.querySelectorAll('input[type="radio"]');
+        allRadios.forEach(radio => radio.disabled = true);
+        
+        const allLabels = quizWrapper.querySelectorAll('.option-item label');
+        allLabels.forEach(label => label.classList.add('disabled-label'));
+
+        // Javoblarni solishtirish
+        for (let i = 0; i < blocksCount; i++) {
+            const inputs = document.querySelectorAll(`input[name="question_${i}"]`);
+            let selectedInput = null;
+            let correctInput = null;
+
+            inputs.forEach(input => {
+                if (input.checked) selectedInput = input;
+                if (input.value === input.getAttribute('data-correct-val')) correctInput = input;
+            });
+
+            // To'g'ri variantni har doim yashil fonda ko'rsatish
+            if (correctInput) {
+                const correctLabel = document.getElementById(correctInput.getAttribute('data-label-id'));
+                if (correctLabel) correctLabel.className = 'correct-style disabled-label';
+            }
+
+            // Agar talaba noto'g'ri javob tanlagan bo'lsa, o'sha tanlaganini qizil qilish
+            if (selectedInput) {
+                if (selectedInput.value !== selectedInput.getAttribute('data-correct-val')) {
+                    const wrongLabel = document.getElementById(selectedInput.getAttribute('data-label-id'));
+                    if (wrongLabel) wrongLabel.className = 'wrong-style disabled-label';
+                } else {
+                    score++; // To'g'ri bo'lsa ball qo'shish
+                }
+            }
+        }
+
+        // Yakuniy natijani hisoblash va ko'rsatish
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = `Siz ${blocksCount} ta savoldan <strong>${score}</strong> tasiga to'g'ri javob berdingiz! (${Math.round((score/blocksCount)*100)}%)`;
+        resultDiv.scrollIntoView({ behavior: 'smooth' });
+        
+        document.getElementById('btn-check').disabled = true;
+    }
+
+    function resetQuiz() {
+        generateQuiz();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+</script>
+
+</body>
+</html>

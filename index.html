@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Test: Tibbiy savollar (avtomatik yuklanadi)</title>
+    <title>To‘liq test: 884 savol (avtomatik yuklanadi)</title>
     <style>
         * {
             box-sizing: border-box;
@@ -16,7 +16,7 @@
             color: #1a344b;
         }
         .quiz-container {
-            max-width: 1100px;
+            max-width: 1200px;
             margin: 0 auto;
         }
         .header-card {
@@ -27,6 +27,11 @@
             box-shadow: 0 6px 14px rgba(0, 0, 0, 0.03);
             text-align: center;
             border: 1px solid #e2edf5;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(4px);
         }
         h1 {
             margin: 0 0 6px 0;
@@ -65,7 +70,7 @@
             border-bottom: 1px solid #e9f0f5;
         }
         .question-text {
-            font-size: 1.08rem;
+            font-size: 1.05rem;
             font-weight: 600;
             margin: 0;
             line-height: 1.45;
@@ -104,7 +109,6 @@
             cursor: pointer;
             color: #1f4b66;
         }
-        /* ranglar */
         .option.correct-highlight {
             background: #d4edda;
             border-color: #2b8c4a;
@@ -135,18 +139,15 @@
             font-size: 0.8rem;
             color: #4f7f9c;
         }
-        .loader {
+        .loader, .error-box {
             text-align: center;
             padding: 50px;
-            font-size: 1.1rem;
             background: white;
             border-radius: 36px;
         }
         .error-box {
             background: #ffe6e5;
             border-left: 5px solid #c0392b;
-            padding: 20px;
-            border-radius: 24px;
             color: #a33;
         }
         @media (max-width: 700px) {
@@ -162,97 +163,95 @@
 <body>
 <div class="quiz-container">
     <div class="header-card">
-        <h1>📋 Tibbiy test (imtihon simulyatori)</h1>
+        <h1>📋 Tibbiy test (884+ savol)</h1>
         <div class="sub">✅ testlar.txt fayli avtomatik yuklanadi. Variantlar aralashtiriladi.</div>
-        <div class="sub">▶️ Javobni tanlang — to‘g‘ri javob <span style="color:#2b8c4a;">yashil</span>, xato javob <span style="color:#c93a3a;">qizil</span> rangda belgilanadi.</div>
-        <div id="statusMessage" class="status-bar">⏳ Yuklanmoqda: testlar.txt fayli o‘qilmoqda...</div>
+        <div class="sub">▶️ Javobni tanlang — to‘g‘ri javob <span style="color:#2b8c4a;">yashil</span>, xato javob <span style="color:#c93a3a;">qizil</span> rangda belgilanadi (to‘g‘ri variant ham yashil bo‘lib chiqadi).</div>
+        <div id="statusMessage" class="status-bar">⏳ testlar.txt fayli yuklanmoqda...</div>
     </div>
     <div id="quizRoot" class="quiz-questions">
-        <div class="loader">📂 Iltimos kuting, test savollari yuklanmoqda...</div>
+        <div class="loader">📂 Iltimos kuting, barcha savollar yuklanmoqda...</div>
     </div>
-    <div class="footer-info">
-        ⚕️ Savollar va javoblar <strong>testlar.txt</strong> faylidan olinadi. To‘g‘ri javoblar yashil rang bilan, xato javoblar qizil va to‘g‘ri variant ham yashil rangda ko‘rinadi.
+    <div class="footer-info" id="footerStats">
+        ⚕️ Test tayyor bo‘lgach, javoblarni belgilashingiz mumkin.
     </div>
 </div>
 
 <script>
-    // ------------------------- PARSE funksiyasi (matn -> savollar) -------------------------
-    function parseQuestionsFromText(text) {
-        const lines = text.split(/\r?\n/);
+    // ------------------------- KUCHAYTIRILGAN PARSER (blok asosida) -------------------------
+    function parseAllQuestions(fullText) {
+        const lines = fullText.split(/\r?\n/);
         const questions = [];
-        let currentQuestion = null;
-        let currentOptions = [];
-        let currentCorrect = null;
+        let i = 0;
+        const totalLines = lines.length;
 
-        // Variant matnini tozalash (yulduz, [* ...], (To'g'ri javob) qismini olib tashlash)
-        function cleanOptionText(raw) {
-            let str = raw.trim();
-            if (str.startsWith('*')) {
-                str = str.substring(1).trim();
-            }
-            if (str.startsWith('[*')) {
-                str = str.replace(/^\[\*/, '').trim();
-            }
-            // qavs ichidagi "To'g'ri javob" va mark belgilarini olib tashlash
-            str = str.replace(/\(To'g'ri javob\)/g, '').replace(/To'g'ri javob/g, '');
-            str = str.replace(/\{\.mark\}/g, '').replace(/\]/g, '').trim();
-            if (str === "") str = raw.replace(/^\*/, '').trim();
-            return str;
-        }
-
-        function flushQuestion() {
-            if (currentQuestion && currentOptions.length > 0 && currentCorrect !== null) {
-                questions.push({
-                    text: currentQuestion,
-                    options: [...currentOptions],
-                    correctAnswer: currentCorrect
-                });
-            }
-            currentQuestion = null;
-            currentOptions = [];
-            currentCorrect = null;
-        }
-
-        for (let i = 0; i < lines.length; i++) {
+        while (i < totalLines) {
             let line = lines[i].trim();
-            if (line === "") continue;
-
-            // Yangi savol: "1. Savol matni" yoki "1) ..." shaklida bo‘lishi mumkin (asosiy format raqam va nuqta)
+            // Yangi savol raqami va matnini topish: "123. Savol matni"
             const questionMatch = line.match(/^(\d+)\.\s+(.*)/);
             if (questionMatch) {
-                flushQuestion();
-                currentQuestion = questionMatch[2].trim();
-                continue;
-            }
-
-            // Agar hozirgi savol mavjud bo'lsa va qator * bilan boshlansa -> variant
-            if (currentQuestion !== null && (line.startsWith('*') || line.startsWith('[*') || line.startsWith('•'))) {
-                let rawOpt = line;
-                let isCorrect = rawOpt.includes("To'g'ri javob");
-                let optText = cleanOptionText(rawOpt);
-                if (optText !== "") {
-                    currentOptions.push(optText);
-                    if (isCorrect) {
-                        currentCorrect = optText;
+                const questionNumber = parseInt(questionMatch[1], 10);
+                const questionText = questionMatch[2].trim();
+                const options = [];
+                let correctAnswer = null;
+                i++; // keyingi satrga o‘tish (variantlarni o‘qish)
+                // variantlarni to‘plash: * yoki [* bilan boshlangan satrlar
+                while (i < totalLines) {
+                    let optLine = lines[i].trim();
+                    if (optLine === "") {
+                        i++;
+                        continue;
+                    }
+                    // Agar yangi raqamli savol kelsa (masalan, "124. ...") variant yig‘ishni to‘xtat
+                    if (optLine.match(/^\d+\.\s+/)) {
+                        break;
+                    }
+                    // Agar variant belgisi bo‘lsa: * yoki [*
+                    if (optLine.startsWith('*') || optLine.startsWith('[*') || optLine.startsWith('•')) {
+                        let isCorrect = optLine.includes("To'g'ri javob");
+                        // variant matnini tozalash
+                        let cleanOpt = optLine.replace(/^\[\*/, '').replace(/^\*/, '').replace(/^•/, '').trim();
+                        cleanOpt = cleanOpt.replace(/\(To'g'ri javob\)/g, '').replace(/To'g'ri javob/g, '');
+                        cleanOpt = cleanOpt.replace(/\{\.mark\}/g, '').replace(/\]/g, '').trim();
+                        if (cleanOpt === "") cleanOpt = optLine.replace(/^\*/, '').trim();
+                        if (cleanOpt !== "") {
+                            options.push(cleanOpt);
+                            if (isCorrect) {
+                                correctAnswer = cleanOpt;
+                            }
+                        }
+                        i++;
+                    } 
+                    else {
+                        // Agar variant belgisi bo‘lmasa va savol raqami ham kelmasa, ehtimol variantning davomi yoki izoh – tashlab yuboramiz
+                        // Lekin ba'zi hollarda variant "*" dan keyingi qatorda bo‘lishi mumkin? Kechirasiz, standart formatda har bir variant alohida qatorda * bilan boshlanadi.
+                        i++;
                     }
                 }
-            } 
-            // Agar savol mavjud va variant belgisi bo'lmasa, lekin chiziq variant bo'lishi mumkin (ba'zi fayllarda "*" dan keyin qatnashadi, bu holat yuqorida ishlanadi)
-            // Hech qanday holatda e'tiborsiz
-        }
-        flushQuestion();
-
-        // Xavfsizlik: to‘g‘ri javob topilmagan bo‘lsa, birinchi variantni to‘g‘ri deb belgilash (lekin real faylda "To'g'ri javob" belgisi bo'lishi kerak)
-        for (let q of questions) {
-            if (!q.correctAnswer && q.options.length) {
-                console.warn("To‘g‘ri javob belgisi topilmadi, birinchi variant olindi:", q.text);
-                q.correctAnswer = q.options[0];
+                // Agar to‘g‘ri javob topilmagan bo‘lsa, lekin variantlar mavjud bo‘lsa – birinchi variantni belgilaymiz (xato bo‘lmasligi uchun)
+                if (correctAnswer === null && options.length > 0) {
+                    console.warn(`Savol ${questionNumber} uchun "To'g'ri javob" belgisi topilmadi, birinchi variant belgilandi.`);
+                    correctAnswer = options[0];
+                }
+                if (options.length > 0) {
+                    questions.push({
+                        id: questionNumber,
+                        text: questionText,
+                        options: options,
+                        correctAnswer: correctAnswer
+                    });
+                } else {
+                    console.warn(`Savol ${questionNumber} variantlarsiz qoldi, o‘tkazib yuborildi.`);
+                }
+            } else {
+                i++;
             }
         }
+        // Tartiblash (id bo‘yicha)
+        questions.sort((a,b) => a.id - b.id);
         return questions;
     }
 
-    // ------------------------- Variantlarni aralashtirish (shuffle) -------------------------
+    // ------------------------- Variantlarni aralashtirish -------------------------
     function shuffleArray(arr) {
         for (let i = arr.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -261,25 +260,26 @@
         return arr;
     }
 
-    // Har bir savol uchun aralashtirilgan variantlar + to‘g‘ri javob matni
-    function prepareShuffledQuestions(parsedQuestions) {
-        return parsedQuestions.map(q => {
-            const shuffledOptions = shuffleArray([...q.options]);
+    function prepareQuestions(parsed) {
+        return parsed.map(q => {
+            const shuffledOpts = shuffleArray([...q.options]);
             return {
                 originalText: q.text,
-                shuffledOptions: shuffledOptions,
-                correctAnswerText: q.correctAnswer
+                shuffledOptions: shuffledOpts,
+                correctAnswerText: q.correctAnswer,
+                id: q.id
             };
         });
     }
 
-    // ------------------------- RENDER (interaktiv test) -------------------------
-    let activeQuestions = [];   // saqlangan ma'lumotlar
+    // ------------------------- RENDER (interaktiv) -------------------------
+    let activeQuestions = [];
 
     function renderQuiz(questionsData) {
         const container = document.getElementById('quizRoot');
         if (!questionsData.length) {
-            container.innerHTML = `<div class="error-box">⚠️ Hech qanday savol topilmadi. testlar.txt faylida savollar raqam bilan (1. ...) va variantlar * bilan boshlanishi kerak. To‘g‘ri javob qatorida “To‘g‘ri javob” so‘zi bo‘lishi zarur.</div>`;
+            container.innerHTML = `<div class="error-box">⚠️ Hech qanday savol topilmadi. testlar.txt faylida savollar "123. Savol matni" va variantlar "* variant" shaklida bo‘lishi kerak. To‘g‘ri javob qatorida “To‘g‘ri javob” so‘zi bo‘lishi zarur.</div>`;
+            document.getElementById('footerStats').innerHTML = `0 ta savol yuklandi. Fayl formatini tekshiring.`;
             return;
         }
 
@@ -287,15 +287,15 @@
         for (let idx = 0; idx < questionsData.length; idx++) {
             const q = questionsData[idx];
             const shuffled = q.shuffledOptions;
-            const groupId = `group_${idx}_${Date.now()}_${Math.random()}`;
+            const groupId = `q_${q.id}_${Date.now()}_${Math.random()}`;
             html += `
-                <div class="question-card" data-qidx="${idx}">
+                <div class="question-card" data-qid="${q.id}" data-idx="${idx}">
                     <div class="question-header">
                         <div class="question-text"><span style="font-weight:700;">${idx+1}.</span> ${escapeHtml(q.originalText)}</div>
                     </div>
                     <div class="options-area" id="options-area-${idx}">
                         ${shuffled.map((opt, optIdx) => `
-                            <div class="option" data-opt-val="${escapeHtml(opt)}" data-opt-idx="${optIdx}">
+                            <div class="option" data-opt-val="${escapeHtml(opt)}">
                                 <input type="radio" name="${groupId}" value="${escapeHtml(opt)}" id="opt_${idx}_${optIdx}" class="option-radio">
                                 <label for="opt_${idx}_${optIdx}" class="option-text">${escapeHtml(opt)}</label>
                             </div>
@@ -307,7 +307,7 @@
         }
         container.innerHTML = html;
 
-        // Event listenerlar — javob tanlanganda rang berish
+        // Event listenerlar
         for (let idx = 0; idx < questionsData.length; idx++) {
             const q = questionsData[idx];
             const correctAns = q.correctAnswerText;
@@ -317,33 +317,28 @@
             const optionDivs = areaDiv.querySelectorAll('.option');
             const feedbackSpan = document.getElementById(`fb-${idx}`);
 
-            radioInputs.forEach((radio, i) => {
+            radioInputs.forEach((radio) => {
                 radio.addEventListener('change', function(e) {
-                    // Tozalash: oldingi highlightlarni olib tashlash
+                    // oldingi highlightlarni tozalash
                     optionDivs.forEach(div => {
                         div.classList.remove('correct-highlight', 'wrong-highlight');
                     });
                     const selectedVal = radio.value;
                     const isCorrect = (selectedVal === correctAns);
                     
-                    // To‘g‘ri javob variantini topib yashil qilish (agar xato tanlansa ham)
+                    // To‘g‘ri javob variantini yashil qilish
                     optionDivs.forEach(div => {
                         const optVal = div.getAttribute('data-opt-val');
                         if (optVal === correctAns) {
                             div.classList.add('correct-highlight');
                         }
                     });
-                    // Tanlangan variant xato bo'lsa, qizil rang
+                    // Agar tanlangan xato bo‘lsa, uni qizil qilish
                     if (!isCorrect) {
                         const parentDiv = radio.closest('.option');
-                        if (parentDiv) {
-                            parentDiv.classList.add('wrong-highlight');
-                        }
-                    } else {
-                        // agar to‘g‘ri tanlangan bo‘lsa, o‘sha variant allaqachon yashil (yuqorida qo‘shildi)
-                        // xato yo‘q.
+                        if (parentDiv) parentDiv.classList.add('wrong-highlight');
                     }
-                    // feedback matn
+                    // feedback matni
                     if (feedbackSpan) {
                         if (isCorrect) {
                             feedbackSpan.innerHTML = '✅ To‘g‘ri javob!';
@@ -356,9 +351,9 @@
                 });
             });
         }
+        document.getElementById('footerStats').innerHTML = `📊 Jami ${questionsData.length} ta savol yuklandi. Variantlar aralashtirilgan. Javob tanlab, o‘z bilimingizni tekshiring.`;
     }
 
-    // HTML escape funksiyasi
     function escapeHtml(str) {
         if (!str) return '';
         return str.replace(/[&<>]/g, function(m) {
@@ -366,15 +361,15 @@
             if (m === '<') return '&lt;';
             if (m === '>') return '&gt;';
             return m;
-        }).replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, function(c) { return c; });
+        }).replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, c => c);
     }
 
-    // ------------------------- AVTOMATIK YUKLASH (fetch /testlar.txt) -------------------------
+    // ------------------------- AVTOMATIK YUKLASH (testlar.txt) -------------------------
     async function loadAndStart() {
         const statusDiv = document.getElementById('statusMessage');
         const quizRoot = document.getElementById('quizRoot');
         try {
-            statusDiv.innerHTML = '⏳ testlar.txt fayli yuklanmoqda...';
+            statusDiv.innerHTML = '⏳ testlar.txt fayli yuklanmoqda (katta hajm, biroz kuting)...';
             const response = await fetch('testlar.txt');
             if (!response.ok) {
                 throw new Error(`Fayl topilmadi (HTTP ${response.status}). testlar.txt fayli index.html bilan bir papkada bo‘lishi kerak.`);
@@ -383,25 +378,22 @@
             if (!fileText || fileText.trim().length === 0) {
                 throw new Error('Fayl bo‘sh, hech qanday savol yo‘q.');
             }
-            // Parse qilish
-            const parsed = parseQuestionsFromText(fileText);
+            // Yangi kuchli parser yordamida barcha savollarni olish
+            const parsed = parseAllQuestions(fileText);
             if (parsed.length === 0) {
-                throw new Error('Savollar topilmadi. Format tekshirilsin: "1. Savol teksti" va variantlar "* variant" va to‘g‘ri javobda "To‘g‘ri javob" so‘zi bo‘lishi kerak.');
+                throw new Error('Hech qanday savol topilmadi. Format tekshirilsin: "1. Savol matni" va variantlar "* variant" va to‘g‘ri javobda "To‘g‘ri javob" so‘zi bo‘lishi kerak.');
             }
-            // Variantlarni aralashtirish
-            const shuffledFull = prepareShuffledQuestions(parsed);
+            const shuffledFull = prepareQuestions(parsed);
             activeQuestions = shuffledFull;
-            // Render
             renderQuiz(activeQuestions);
-            statusDiv.innerHTML = `✅ ${parsed.length} ta savol yuklandi. Variantlar aralashtirildi. Javob tanlang.`;
+            statusDiv.innerHTML = `✅ ${parsed.length} ta savol muvaffaqiyatli yuklandi. Variantlar aralashtirildi.`;
         } catch (err) {
             console.error(err);
             statusDiv.innerHTML = `❌ Xatolik: ${err.message}`;
-            quizRoot.innerHTML = `<div class="error-box">⚠️ testlar.txt faylini yuklab bo‘lmadi. <br> Sababi: ${err.message}<br><br>📌 Fayl nomi <strong>testlar.txt</strong> va u index.html bilan bir papkada joylashganligini tekshiring. Fayl format namunasi:<br><code>1. Savol matni<br>* to'g'ri javob (To'g'ri javob)<br>* noto'g'ri javob</code></div>`;
+            quizRoot.innerHTML = `<div class="error-box">⚠️ testlar.txt faylini yuklab bo‘lmadi.<br>Sababi: ${err.message}<br><br>📌 Fayl nomi <strong>testlar.txt</strong> va u index.html bilan bir papkada ekanligini tekshiring.<br>Fayl format namunasi:<br><code>1. Savol matni<br>* to‘g‘ri javob (To‘g‘ri javob)<br>* noto‘g‘ri javob 1<br>* noto‘g‘ri javob 2<br><br>2. Keyingi savol...</code></div>`;
         }
     }
 
-    // Sahifa yuklanganda darhol ishga tushirish
     window.addEventListener('DOMContentLoaded', loadAndStart);
 </script>
 </body>

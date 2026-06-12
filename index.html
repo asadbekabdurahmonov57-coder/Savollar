@@ -80,21 +80,19 @@
             margin-top: 20px; padding: 20px; border-radius: 8px; text-align: center; font-size: 18px; font-weight: bold; display: none; background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46;
         }
         .q-list-item { padding: 10px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
-        #loading-status { text-align: center; font-size: 16px; color: #2563eb; padding: 10px; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('quiz-tab', this)">📝 Test Yechish</button>
-        <button class="tab-btn" onclick="switchTab('admin-tab', this)">⚙️ Admin Panel (Savol Qo'shish)</button>
+        <button id="tab-quiz-btn" class="tab-btn active" onclick="switchTab('quiz-tab')">📝 Test Yechish</button>
+        <button id="tab-admin-btn" class="tab-btn" onclick="openAdminPanel()">⚙️ Admin Panel</button>
     </div>
 
     <div id="quiz-tab" class="panel active">
         <h2 style="margin-top:0;">📝 Savollarga javob bering</h2>
-        <div id="loading-status">testlar.txt faylidan savollar o'qilmoqda...</div>
-        <div id="quiz-wrapper"></div>
+        <div id="quiz-wrapper">Hozircha savollar kiritilmagan. Admin panelga o'tib savol qo'shing.</div>
         <div style="margin-top: 20px; text-align: center; display: none;" id="quiz-controls">
             <button class="btn btn-green" id="btn-check" onclick="checkAnswers()">Natijani Tekshirish</button>
             <button class="btn btn-blue" onclick="renderQuiz()">Qayta yechish (Aralashtirish)</button>
@@ -103,8 +101,7 @@
     </div>
 
     <div id="admin-tab" class="panel">
-        <h2 style="margin-top:0;">⚙️ Yangi Savol Qo'shish</h2>
-        <p style="color: #64748b; font-size: 14px;">Savollarni kiriting. Har bir savol qo'shilganda sizga avtomatik ravishda <strong>testlar.txt</strong> fayli yuklab beriladi.</p>
+        <h2 style="margin-top:0;">⚙️ Yangi Savol Qo'shish (Admin)</h2>
         
         <div class="form-group">
             <label>Savol matni:</label>
@@ -112,7 +109,7 @@
         </div>
         <div class="form-group">
             <label style="color: #10b981;">To'g'ri javob varianti:</label>
-            <input type="text" id="inp-correct" placeholder="To'g'ri javobni yozing">
+            <input type="text" id="inp-correct" placeholder="To'g'ri javobni o'zini yozing">
             <div class="info-note">* belgilari boshida kelsa avtomatik o'chiriladi</div>
         </div>
         <div class="form-group">
@@ -128,50 +125,48 @@
             <input type="text" id="inp-wrong3" placeholder="Noto'g'ri javob variantini yozing">
         </div>
         
-        <button class="btn btn-blue" onclick="addQuestion()">➕ Bazaga Qo'shish va Faylni Yuklash</button>
+        <button class="btn btn-blue" onclick="addQuestion()">➕ Bazaga Saqlash</button>
         <button class="btn btn-red" onclick="clearAllData()" style="float: right;">🗑️ Barchasini O'chirish</button>
         
-        <h3 style="margin-top: 30px; border-top: 2px dashed #cbd5e1; padding-top: 20px;">Hozirgi savollar ro'yxati (<span id="q-count">0</span> ta):</h3>
+        <h3 style="margin-top: 30px; border-top: 2px dashed #cbd5e1; padding-top: 20px;">Sayt xotirasidagi jami savollar (<span id="q-count">0</span> ta):</h3>
         <div id="admin-questions-list"></div>
     </div>
 </div>
 
 <script>
-    let customQuestions = [];
+    // ADMIN PANEL PAROLI (Xohlasangiz shu yerdan o'zgartiring)
+    const ADMIN_PASSWORD = "admin123";
 
-    // Sahifa yuklanganda to'g'ridan-to'g'ri GitHub repository ichidagi 'testlar.txt' faylini o'qiymiz
-    window.addEventListener('DOMContentLoaded', () => {
-        loadTxtFile();
-    });
+    // Dastlabki andoza savollar (Sayt birinchi marta ochilganda bo'sh turmasligi uchun)
+    const defaultQuestions = [
+        { "question": "Oshqozonning qaysi operatsiyasidan so‘ng postgastrorezektsion sindrom rivojlanishi mumkin?", "correct": "me’da rezektsiyasi", "incorrect": ["gastrotomiya", "perforativ yarani tikish", "hamma javoblar to‘g‘ri"] },
+        { "question": "Exinokokkoz etiologik faktorlarini ko‘rsating.", "correct": "gelment", "incorrect": ["bakteriya", "virus", "zamburug‘"] }
+    ];
 
-    async function loadTxtFile() {
-        const status = document.getElementById('loading-status');
-        try {
-            const response = await fetch('testlar.txt');
-            if (!response.ok) {
-                status.innerText = "testlar.txt fayli topilmadi yoki hali yaratilmagan. Admin paneldan savol qo'shib yuklang.";
-                return;
-            }
-            const dataText = await response.text();
-            if(dataText.trim().length > 0) {
-                customQuestions = JSON.parse(dataText);
-                status.style.display = 'none';
-                renderQuiz();
-            } else {
-                status.innerText = "testlar.txt fayli bo'sh. Admin paneldan savol qo'shing.";
-            }
-        } catch (e) {
-            status.innerText = "Faylni o'qishda xatolik yoki fayl hali yo'q.";
-            console.error(e);
+    // Xotiradan savollarni o'qish (Agar yo'q bo'lsa andozani yuklash)
+    let customQuestions = JSON.parse(localStorage.getItem('my_secured_quiz_db'));
+    if (customQuestions === null) {
+        customQuestions = defaultQuestions;
+        localStorage.setItem('my_secured_quiz_db', JSON.stringify(customQuestions));
+    }
+
+    // Parol bilan Admin Panelni ochish funksiyasi
+    function openAdminPanel() {
+        const userPass = prompt("Admin Panelga kirish uchun maxfiy parolni kiriting:");
+        if (userPass === ADMIN_PASSWORD) {
+            switchTab('admin-tab');
+            document.getElementById('tab-admin-btn').classList.add('active');
+            document.getElementById('tab-quiz-btn').classList.remove('active');
+            renderAdminList();
+        } else if (userPass !== null) {
+            alert("Xato parol! Admin panelga kirish taqiqlangan.");
+            switchTab('quiz-tab');
         }
     }
 
-    function switchTab(tabId, btnElement) {
+    function switchTab(tabId) {
         document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         document.getElementById(tabId).classList.add('active');
-        btnElement.classList.add('active');
-        if(tabId === 'admin-tab') renderAdminList();
     }
 
     function cleanInputText(text) {
@@ -189,7 +184,7 @@
         return newArray;
     }
 
-    // SAVOL QO'SHISH VA AVTOMATIK TXT YUKLAB BERISH
+    // SAVOL QO'SHISH (Faqat sayt xotirasiga saqlaydi, fayl yuklamaydi)
     function addQuestion() {
         let qText = document.getElementById('inp-question').value.trim();
         let correct = document.getElementById('inp-correct').value;
@@ -214,6 +209,7 @@
         };
 
         customQuestions.push(newQuestion);
+        localStorage.setItem('my_secured_quiz_db', JSON.stringify(customQuestions));
         
         // Inputlarni tozalash
         document.getElementById('inp-question').value = "";
@@ -222,26 +218,9 @@
         document.getElementById('inp-wrong2').value = "";
         document.getElementById('inp-wrong3').value = "";
 
+        alert("Savol muvaffaqiyatli saqlandi! Yulduzchalar tozalandi.");
         renderAdminList();
         renderQuiz();
-        
-        // AVTOMATIK TXT FAYL YARATIB YUKLASH TIZIMI
-        downloadTxtFile();
-        alert("Savol qo'shildi! '*' belgilari tozalandi va sizga yangilangan 'testlar.txt' yuklab berildi.");
-    }
-
-    function downloadTxtFile() {
-        const dataStr = JSON.stringify(customQuestions, null, 4);
-        const blob = new Blob([dataStr], { type: "text/plain;charset=utf-8" });
-        const url = URL.createObjectURL(blob);
-        
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = "testlar.txt"; // Fayl nomi avtomatik ravishda shu nomda yuklanadi
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
     }
 
     function renderAdminList() {
@@ -263,18 +242,18 @@
     function deleteQuestion(index) {
         if(confirm("Ushbu savolni o'chirishni xohlaysizmi?")) {
             customQuestions.splice(index, 1);
+            localStorage.setItem('my_secured_quiz_db', JSON.stringify(customQuestions));
             renderAdminList();
             renderQuiz();
-            downloadTxtFile(); // O'chirilganda ham faylni qayta yangilab yuklaydi
         }
     }
 
     function clearAllData() {
-        if(confirm("Barcha testlar o'chib ketsinmi?")) {
+        if(confirm("Barcha testlar butunlay o'chib ketsinmi?")) {
             customQuestions = [];
+            localStorage.setItem('my_secured_quiz_db', JSON.stringify([]));
             renderAdminList();
             renderQuiz();
-            downloadTxtFile();
         }
     }
 
@@ -361,6 +340,10 @@
         resBox.scrollIntoView({ behavior: 'smooth' });
         document.getElementById('btn-check').disabled = true;
     }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        renderQuiz();
+    });
 </script>
 
 </body>

@@ -45,7 +45,6 @@
         .panel { display: none; }
         .panel.active { display: block; }
         
-        /* Admin Panel elementlari */
         .form-group {
             margin-bottom: 15px;
         }
@@ -78,7 +77,6 @@
         .btn-red { background: #ef4444; color: white; }
         .btn-red:hover { background: #dc2626; }
         
-        /* Test yechish qismi */
         .question-block {
             margin-bottom: 25px;
             padding: 20px;
@@ -108,7 +106,6 @@
         .option-item label:hover { background: #f1f5f9; }
         .option-item input[type="radio"] { margin-right: 12px; width: 18px; height: 18px; accent-color: #3b82f6; }
         
-        /* Natijalar stili va qulflash */
         .option-item input[type="radio"]:disabled,
         .option-item label.disabled-label {
             cursor: not-allowed;
@@ -158,7 +155,7 @@
         </div>
         <div class="form-group">
             <label style="color: #10b981;">To'g'ri javob variantini yozing:</label>
-            <input type="text" id="inp-correct" placeholder="Faqat to'g'ri javobni o'zi (Kiritilgach avtomatik joyi aralashadi)">
+            <input type="text" id="inp-correct" placeholder="Faqat to'g'ri javobni o'zi">
         </div>
         <div class="form-group">
             <label style="color: #ef4444;">Noto'g'ri variant 1:</label>
@@ -185,17 +182,18 @@
 </div>
 
 <script>
-    // 1. ASOSIY BAZA: GitHub-da doimiy turadigan testlar (Siz nusxalagan kodlar shu yerga tushadi)
+    // 1. ASOSIY DOIMIY BAZA (Boshqalar ham ko'rishi uchun nusxalangan kodlarni shu yerga qo'yasiz)
     const hardcodedQuestions = [
-        { question: "Oshqozonning qaysi operatsiyasidan so‘ng postgastrorezektsion sindrom rivojlanishi mumkin?", correct: "me’da rezektsiyasi", incorrect: ["gastrotomiya", "perforativ yarani tikish", "hamma javoblar to‘g‘ri"] },
-        { question: "Exinokokkoz etiologik faktorlarini ko‘rsating.", correct: "gelment", incorrect: ["bakteriya", "virus", "zamburug‘"] }
+        { "question": "Oshqozonning qaysi operatsiyasidan so‘ng postgastrorezektsion sindrom rivojlanishi mumkin?", "correct": "me’da rezektsiyasi", "incorrect": [ "gastrotomiya", "perforativ yarani tikish", "hamma javoblar to‘g‘ri" ] },
+        { "question": "Exinokokkoz etiologik faktorlarini ko‘rsating.", "correct": "gelment", "incorrect": [ "bakteriya", "virus", "zamburug‘" ] }
     ];
 
-    let customQuestions = JSON.parse(localStorage.getItem('my_quiz_database')) || [];
+    // 2. XOTIRANI TEKSHIRISH (Agar xotirada ma'lumot bo'lsa o'shani oladi, qayta yozib yubormaydi)
+    let customQuestions = JSON.parse(localStorage.getItem('my_fixed_quiz_db'));
     
-    if(customQuestions.length === 0) {
+    if (customQuestions === null) {
         customQuestions = hardcodedQuestions;
-        localStorage.setItem('my_quiz_database', JSON.stringify(customQuestions));
+        localStorage.setItem('my_fixed_quiz_db', JSON.stringify(customQuestions));
     }
 
     function switchTab(tabId, btnElement) {
@@ -206,10 +204,9 @@
         if(tabId === 'admin-tab') renderAdminList();
     }
 
-    // Aralashtirish algoritmi (Fisher-Yates shuffle)
     function shuffle(array) {
         let currentIndex = array.length, randomIndex;
-        let newArray = [...array]; // Asl massiv buzilmasligi uchun nusxa olamiz
+        let newArray = [...array];
         while (currentIndex != 0) {
             randomIndex = Math.floor(Math.random() * currentIndex);
             currentIndex--;
@@ -218,7 +215,7 @@
         return newArray;
     }
 
-    // SAVOL QO'SHISH FUNKSIYASI
+    // SAVOL QO'SHISH (Xotiraga to'g'ri yozish)
     function addQuestion() {
         const qText = document.getElementById('inp-question').value.trim();
         const correct = document.getElementById('inp-correct').value.trim();
@@ -238,18 +235,17 @@
         };
 
         customQuestions.push(newQuestion);
-        localStorage.setItem('my_quiz_database', JSON.stringify(customQuestions));
+        localStorage.setItem('my_fixed_quiz_db', JSON.stringify(customQuestions));
         
-        // Inputlarni tozalash
         document.getElementById('inp-question').value = "";
         document.getElementById('inp-correct').value = "";
         document.getElementById('inp-wrong1').value = "";
         document.getElementById('inp-wrong2').value = "";
         document.getElementById('inp-wrong3').value = "";
 
-        alert("Savol muvaffaqiyatli saqlandi va variantlari avtomatik aralashtirildi!");
+        alert("Savol muvaffaqiyatli saqlandi va variantlari aralashtirildi!");
         renderAdminList();
-        renderQuiz(); // Yangi savol qo'shilishi bilan testni qaytadan aralashtirib yuritish
+        renderQuiz();
     }
 
     function renderAdminList() {
@@ -271,22 +267,21 @@
     function deleteQuestion(index) {
         if(confirm("Ushbu savolni o'chirishni xohlaysizmi?")) {
             customQuestions.splice(index, 1);
-            localStorage.setItem('my_quiz_database', JSON.stringify(customQuestions));
+            localStorage.setItem('my_fixed_quiz_db', JSON.stringify(customQuestions));
             renderAdminList();
             renderQuiz();
         }
     }
 
     function clearAllData() {
-        if(confirm("DIQQAT: Barcha kiritilgan testlar butunlay o'chib ketadi! Rozimisiz?")) {
+        if(confirm("DIQQAT: Barcha kiritilgan testlar xotiradan o'chib ketadi! Rozimisiz?")) {
             customQuestions = [];
-            localStorage.removeItem('my_quiz_database');
+            localStorage.setItem('my_fixed_quiz_db', JSON.stringify([]));
             renderAdminList();
             renderQuiz();
         }
     }
 
-    // TESTLARNI FOYDALANUVCHIGA CHIQARISH (VARIANTLAR DOIM ARALASHADI)
     let activeQuizQuestions = [];
     function renderQuiz() {
         const wrapper = document.getElementById('quiz-wrapper');
@@ -294,7 +289,7 @@
         resBox.style.display = "none";
         document.getElementById('btn-check').disabled = false;
 
-        if(customQuestions.length === 0) {
+        if(!customQuestions || customQuestions.length === 0) {
             wrapper.innerHTML = "Siz tomondan hech qanday savol kiritilmagan. Admin panelga o'tib savol qo'shing.";
             document.getElementById('quiz-controls').style.display = "none";
             return;
@@ -302,11 +297,9 @@
         document.getElementById('quiz-controls').style.display = "block";
         wrapper.innerHTML = "";
 
-        // Savollarning o'zini ham aralashtiramiz
         activeQuizQuestions = shuffle(customQuestions);
 
         activeQuizQuestions.forEach((q, qIndex) => {
-            // DIQQAT: To'g'ri javob va noto'g'ri javoblarni birlashtirib, majburiy aralashtiramiz (Doim A da turmaydi!)
             const allOptions = shuffle([q.correct, ...q.incorrect]);
             
             const block = document.createElement('div');
@@ -335,14 +328,13 @@
         });
     }
 
-    // NATIJANI TEKSHIRISH VA TO'LIQ QULFLASH
     function checkAnswers() {
         let score = 0;
         const radios = document.querySelectorAll('#quiz-wrapper input[type="radio"]');
-        radios.forEach(r => r.disabled = true); // Radio tugmalarni qulflash
+        radios.forEach(r => r.disabled = true);
 
         const allLabels = document.querySelectorAll('#quiz-wrapper .option-item label');
-        allLabels.forEach(l => l.classList.add('disabled-label')); // Labellarni bosilmaydigan qilish
+        allLabels.forEach(l => l.classList.add('disabled-label'));
 
         activeQuizQuestions.forEach((q, qIndex) => {
             const inputs = document.querySelectorAll(`input[name="q_${qIndex}"]`);
@@ -354,12 +346,9 @@
                 if(input.value === input.getAttribute('data-correct')) correctInput = input;
             });
 
-            // To'g'ri javobni yashil rang bilan ko'rsatish
             if(correctInput) {
                 document.getElementById(correctInput.getAttribute('data-label-id')).classList.add('correct-style');
             }
-            
-            // Natija tekshirilgach noto'g'ri tanlangan javobni qizil qilish (va uni o'zgartirib bo'lmaydi)
             if(selected) {
                 if(selected.value !== selected.getAttribute('data-correct')) {
                     document.getElementById(selected.getAttribute('data-label-id')).classList.add('wrong-style');
@@ -371,7 +360,7 @@
 
         const resBox = document.getElementById('result-box');
         resBox.style.display = "block";
-        resBox.innerHTML = `Siz ${activeQuizQuestions.length} ta savoldan ${score} tasiga to'g'ri javob berdingiz. (${Math.round((score/activeQuizQuestions.length)*100)}%)`;
+        resBox.innerHTML = `Siz jami ${activeQuizQuestions.length} ta savoldan ${score} tasiga to'g'ri javob berdingiz. (${Math.round((score/activeQuizQuestions.length)*100)}%)`;
         resBox.scrollIntoView({ behavior: 'smooth' });
         document.getElementById('btn-check').disabled = true;
     }
@@ -382,7 +371,7 @@
         const dataStr = JSON.stringify(customQuestions, null, 4);
         area.value = `const hardcodedQuestions = ${dataStr};`;
         area.select();
-        alert("GitHub uchun kod nusxalandi! Uni index.html dagi hardcodedQuestions o'rniga qo'ying.");
+        alert("GitHub uchun kod tayyor! Uni nusxalab oling (Ctrl+C).");
     }
 
     window.addEventListener('DOMContentLoaded', () => {

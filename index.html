@@ -61,6 +61,11 @@
             box-sizing: border-box;
             font-size: 15px;
         }
+        .info-note {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 3px;
+        }
         .btn {
             padding: 10px 20px;
             font-size: 15px;
@@ -107,12 +112,8 @@
         .option-item input[type="radio"] { margin-right: 12px; width: 18px; height: 18px; accent-color: #3b82f6; }
         
         .option-item input[type="radio"]:disabled,
-        .option-item label.disabled-label {
-            cursor: not-allowed;
-        }
-        .option-item label.disabled-label:hover {
-            background: #f8fafc;
-        }
+        .option-item label.disabled-label { cursor: not-allowed; }
+        .option-item label.disabled-label:hover { background: #f8fafc; }
         .correct-style { background-color: #d1fae5 !important; color: #065f46 !important; border-color: #34d399 !important; font-weight: bold; }
         .wrong-style { background-color: #fee2e2 !important; color: #991b1b !important; border-color: #f87171 !important; font-weight: bold; }
         
@@ -123,8 +124,11 @@
         .q-list-item {
             padding: 10px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;
         }
+        #export-container {
+            margin-top: 15px; padding: 15px; background: #f8fafc; border: 1px dashed #3b82f6; border-radius: 8px; display: none;
+        }
         #export-area {
-            width: 100%; height: 100px; margin-top: 10px; font-family: monospace; font-size: 12px; display: none;
+            width: 100%; height: 150px; margin-top: 10px; font-family: monospace; font-size: 13px; box-sizing: border-box; padding: 10px;
         }
     </style>
 </head>
@@ -138,7 +142,7 @@
 
     <div id="quiz-tab" class="panel active">
         <h2 style="margin-top:0;">📝 Savollarga javob bering</h2>
-        <div id="quiz-wrapper">Siz tomondan hech qanday savol kiritilmagan. Admin panelga o'tib savol qo'shing.</div>
+        <div id="quiz-wrapper">Savollar yuklanmoqda yoki hali kiritilmagan...</div>
         <div style="margin-top: 20px; text-align: center;" id="quiz-controls">
             <button class="btn btn-green" id="btn-check" onclick="checkAnswers()">Natijani Tekshirish</button>
             <button class="btn btn-blue" onclick="renderQuiz()">Qayta yechish (Aralashtirish)</button>
@@ -154,8 +158,9 @@
             <textarea id="inp-question" rows="2" placeholder="Savolni shu yerga yozing..."></textarea>
         </div>
         <div class="form-group">
-            <label style="color: #10b981;">To'g'ri javob variantini yozing:</label>
-            <input type="text" id="inp-correct" placeholder="Faqat to'g'ri javobni o'zi">
+            <label style="color: #10b981;">To'g'ri javob varianti:</label>
+            <input type="text" id="inp-correct" placeholder="To'g'ri javobni yozing">
+            <div class="info-note">* belgilari avtomatik tozalanadi</div>
         </div>
         <div class="form-group">
             <label style="color: #ef4444;">Noto'g'ri variant 1:</label>
@@ -171,29 +176,50 @@
         </div>
         
         <button class="btn btn-blue" onclick="addQuestion()">➕ Bazaga Qo'shish</button>
-        <button class="btn btn-green" onclick="exportData()">💾 Kodni GitHub uchun nusxalash</button>
+        <button class="btn btn-green" onclick="exportData()">💾 Doimiy Saqlash Kodini Olish</button>
         <button class="btn btn-red" onclick="clearAllData()" style="float: right;">🗑️ Barchasini O'chirish</button>
         
-        <textarea id="export-area" readonly placeholder="GitHub kod tarkibi shu yerda hosil bo'ladi..."></textarea>
+        <div id="export-container">
+            <strong style="color: #2563eb;">⚠️ MUHIM QADAM: Savollaringiz o'chib ketmasligi va hamma ko'rishi uchun quyidagi kodni to'liq nusxalab, GitHub'dagi index.html ichidagi "hardcodedQuestions" o'rniga qo'ying:</strong>
+            <textarea id="export-area" readonly></textarea>
+        </div>
         
-        <h3 style="margin-top: 30px; border-top: 2px dashed #cbd5e1; padding-top: 20px;">Kiritilgan savollar ro'yxati (<span id="q-count">0</span> ta):</h3>
+        <h3 style="margin-top: 30px; border-top: 2px dashed #cbd5e1; padding-top: 20px;">Hozir bazadagi jami savollar (<span id="q-count">0</span> ta):</h3>
         <div id="admin-questions-list"></div>
     </div>
 </div>
 
 <script>
-    // 1. ASOSIY DOIMIY BAZA (Boshqalar ham ko'rishi uchun nusxalangan kodlarni shu yerga qo'yasiz)
+    // -------------------------------------------------------------------------
+    // 1. DOIMIY BAZA (GitHub'da saqlanadigan joy)
+    // Har safar Kodni olib shu yerga tashlasangiz, savollar chiqib ketganda ham o'chmaydi!
+    // -------------------------------------------------------------------------
     const hardcodedQuestions = [
-        { "question": "Oshqozonning qaysi operatsiyasidan so‘ng postgastrorezektsion sindrom rivojlanishi mumkin?", "correct": "me’da rezektsiyasi", "incorrect": [ "gastrotomiya", "perforativ yarani tikish", "hamma javoblar to‘g‘ri" ] },
-        { "question": "Exinokokkoz etiologik faktorlarini ko‘rsating.", "correct": "gelment", "incorrect": [ "bakteriya", "virus", "zamburug‘" ] }
+        {
+            "question": "Oshqozonning qaysi operatsiyasidan so‘ng postgastrorezektsion sindrom rivojlanishi mumkin?",
+            "correct": "me’da rezektsiyasi",
+            "incorrect": [
+                "gastrotomiya",
+                "perforativ yarani tikish",
+                "hamma javoblar to‘g‘ri"
+            ]
+        },
+        {
+            "question": "Exinokokkoz etiologik faktorlarini ko‘rsating.",
+            "correct": "gelment",
+            "incorrect": [
+                "bakteriya",
+                "virus",
+                "zamburug‘"
+            ]
+        }
     ];
 
-    // 2. XOTIRANI TEKSHIRISH (Agar xotirada ma'lumot bo'lsa o'shani oladi, qayta yozib yubormaydi)
-    let customQuestions = JSON.parse(localStorage.getItem('my_fixed_quiz_db'));
-    
+    // Xotirani boshqarish
+    let customQuestions = JSON.parse(localStorage.getItem('my_quiz_ultimate_db'));
     if (customQuestions === null) {
-        customQuestions = hardcodedQuestions;
-        localStorage.setItem('my_fixed_quiz_db', JSON.stringify(customQuestions));
+        customQuestions = [...hardcodedQuestions];
+        localStorage.setItem('my_quiz_ultimate_db', JSON.stringify(customQuestions));
     }
 
     function switchTab(tabId, btnElement) {
@@ -204,6 +230,12 @@
         if(tabId === 'admin-tab') renderAdminList();
     }
 
+    // Matn boshidagi *, -, va nuqtalarni avtomatik tozalash funksiyasi
+    function cleanInputText(text) {
+        return text.trim().replace(/^[\*\-\u2022\.\s]+/, "").trim();
+    }
+
+    // Fisher-Yates aralashtirish algoritmi
     function shuffle(array) {
         let currentIndex = array.length, randomIndex;
         let newArray = [...array];
@@ -215,18 +247,24 @@
         return newArray;
     }
 
-    // SAVOL QO'SHISH (Xotiraga to'g'ri yozish)
+    // SAVOL QO'SHISH
     function addQuestion() {
-        const qText = document.getElementById('inp-question').value.trim();
-        const correct = document.getElementById('inp-correct').value.trim();
-        const w1 = document.getElementById('inp-wrong1').value.trim();
-        const w2 = document.getElementById('inp-wrong2').value.trim();
-        const w3 = document.getElementById('inp-wrong3').value.trim();
+        let qText = document.getElementById('inp-question').value.trim();
+        let correct = document.getElementById('inp-correct').value;
+        let w1 = document.getElementById('inp-wrong1').value;
+        let w2 = document.getElementById('inp-wrong2').value;
+        let w3 = document.getElementById('inp-wrong3').value;
 
         if(!qText || !correct || !w1 || !w2 || !w3) {
             alert("Iltimos, barcha maydonlarni to'ldiring!");
             return;
         }
+
+        // '*' belgilari va ortiqcha bo'shliqlarni avtomatik o'chiramiz
+        correct = cleanInputText(correct);
+        w1 = cleanInputText(w1);
+        w2 = cleanInputText(w2);
+        w3 = cleanInputText(w3);
 
         const newQuestion = {
             question: qText,
@@ -235,15 +273,16 @@
         };
 
         customQuestions.push(newQuestion);
-        localStorage.setItem('my_fixed_quiz_db', JSON.stringify(customQuestions));
+        localStorage.setItem('my_quiz_ultimate_db', JSON.stringify(customQuestions));
         
+        // Inputlarni tozalash
         document.getElementById('inp-question').value = "";
         document.getElementById('inp-correct').value = "";
         document.getElementById('inp-wrong1').value = "";
         document.getElementById('inp-wrong2').value = "";
         document.getElementById('inp-wrong3').value = "";
 
-        alert("Savol muvaffaqiyatli saqlandi va variantlari aralashtirildi!");
+        alert("Savol qo'shildi! Variantlardagi barcha '*' belgilari avtomatik o'chirildi.");
         renderAdminList();
         renderQuiz();
     }
@@ -267,21 +306,22 @@
     function deleteQuestion(index) {
         if(confirm("Ushbu savolni o'chirishni xohlaysizmi?")) {
             customQuestions.splice(index, 1);
-            localStorage.setItem('my_fixed_quiz_db', JSON.stringify(customQuestions));
+            localStorage.setItem('my_quiz_ultimate_db', JSON.stringify(customQuestions));
             renderAdminList();
             renderQuiz();
         }
     }
 
     function clearAllData() {
-        if(confirm("DIQQAT: Barcha kiritilgan testlar xotiradan o'chib ketadi! Rozimisiz?")) {
+        if(confirm("Barcha testlar o'chib ketsinmi?")) {
             customQuestions = [];
-            localStorage.setItem('my_fixed_quiz_db', JSON.stringify([]));
+            localStorage.setItem('my_quiz_ultimate_db', JSON.stringify([]));
             renderAdminList();
             renderQuiz();
         }
     }
 
+    // TESTLARNI ARALASH KO'RINISHDA CHIQARISH
     let activeQuizQuestions = [];
     function renderQuiz() {
         const wrapper = document.getElementById('quiz-wrapper');
@@ -290,7 +330,7 @@
         document.getElementById('btn-check').disabled = false;
 
         if(!customQuestions || customQuestions.length === 0) {
-            wrapper.innerHTML = "Siz tomondan hech qanday savol kiritilmagan. Admin panelga o'tib savol qo'shing.";
+            wrapper.innerHTML = "Hozircha savollar mavjud emas. Admin panelga o'tib qo'shing.";
             document.getElementById('quiz-controls').style.display = "none";
             return;
         }
@@ -365,13 +405,14 @@
         document.getElementById('btn-check').disabled = true;
     }
 
+    // SCRIPT ICHIDAGI DOIMIY ANDOZANI YANGILASH UCHUN EKSPORT
     function exportData() {
+        document.getElementById('export-container').style.display = "block";
         const area = document.getElementById('export-area');
-        area.style.display = "block";
         const dataStr = JSON.stringify(customQuestions, null, 4);
-        area.value = `const hardcodedQuestions = ${dataStr};`;
+        area.value = dataStr;
         area.select();
-        alert("GitHub uchun kod tayyor! Uni nusxalab oling (Ctrl+C).");
+        alert("Kod hosil bo'ldi va belgilandi! Uni nusxalab oling.");
     }
 
     window.addEventListener('DOMContentLoaded', () => {

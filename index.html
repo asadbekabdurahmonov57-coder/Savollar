@@ -199,7 +199,7 @@
 </div>
 
 <script>
-    // ------------------------- KUCHAYTIRILGAN PARSER (blok asosida) -------------------------
+    // ------------------------- PARSER (blok asosida, tartiblanmaydi) -------------------------
     function parseAllQuestions(fullText) {
         const lines = fullText.split(/\r?\n/);
         const questions = [];
@@ -260,7 +260,7 @@
                 i++;
             }
         }
-        questions.sort((a,b) => a.id - b.id);
+        // TARTIBLANMAYDI – faylda qanday ketma-ketlikda uchrasa, shu holatda saqlanadi
         return questions;
     }
 
@@ -290,7 +290,7 @@
     let renderedCount = 100;        // faqat 100 ta savol ko‘rsatiladi
 
     function renderQuiz(questionsData) {
-        // faqat birinchi 100 tasini olish
+        // faqat birinchi 100 tasini olish (tartib saqlanadi)
         const limited = questionsData.slice(0, renderedCount);
         const container = document.getElementById('quizRoot');
         if (!limited.length) {
@@ -377,7 +377,6 @@
     }
 
     function showResults() {
-        // Faqat render qilingan savollar indekslari (0..renderedCount-1)
         const total = selectedAnswers.length;
         if (total === 0) {
             document.getElementById('resultDisplay').innerHTML = '⚠️ Hali hech qanday javob belgilanmagan.';
@@ -423,7 +422,7 @@
                 throw new Error('Hech qanday savol topilmadi.');
             }
             const shuffledFull = prepareQuestions(parsed);
-            activeQuestions = shuffledFull;   // to‘liq massiv
+            activeQuestions = shuffledFull;   // to‘liq massiv (tartib saqlangan)
             renderQuiz(activeQuestions);      // render faqat 100 tasini oladi
             statusDiv.innerHTML = `✅ ${parsed.length} ta savol yuklandi (faqat birinchi 100 tasi ko‘rsatilmoqda). Variantlar aralashtirildi.`;
         } catch (err) {

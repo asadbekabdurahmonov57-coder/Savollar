@@ -150,7 +150,7 @@
             border-left: 5px solid #c0392b;
             color: #a33;
         }
-        .result-btn {
+        .action-btn {
             background: #2c7da0;
             border: none;
             color: white;
@@ -159,16 +159,29 @@
             padding: 10px 28px;
             border-radius: 40px;
             cursor: pointer;
-            margin-top: 12px;
+            margin: 8px 10px;
             transition: 0.2s;
+            display: inline-block;
         }
-        .result-btn:hover {
+        .action-btn.reset {
+            background: #6c757d;
+        }
+        .action-btn.reset:hover {
+            background: #5a6268;
+        }
+        .action-btn:hover {
             background: #1f617e;
         }
         .stats-text {
-            margin-top: 12px;
+            margin-top: 16px;
             font-weight: 500;
             font-size: 1rem;
+            background: #eef2fa;
+            padding: 8px;
+            border-radius: 40px;
+        }
+        .button-group {
+            margin-top: 20px;
         }
         @media (max-width: 700px) {
             .question-header, .options-area {
@@ -185,7 +198,7 @@
     <div class="header-card">
         <h1>📋 Tibbiy test (faqat birinchi 100 ta savol)</h1>
         <div class="sub">✅ testlar.txt fayli avtomatik yuklanadi. Variantlar aralashtiriladi.</div>
-        <div class="sub">▶️ Javobni tanlang — to‘g‘ri javob <span style="color:#2b8c4a;">yashil</span>, xato javob <span style="color:#c93a3a;">qizil</span> rangda belgilanadi.</div>
+        <div class="sub">▶️ Javobni tanlang — to‘g‘ri javob <span style="color:#2b8c4a;">yashil</span>, xato javob <span style="color:#c93a3a;">qizil</span> rangda belgilanadi. Tanlanganidan keyin boshqa javob tanlash bloklanadi.</div>
         <div id="statusMessage" class="status-bar">⏳ testlar.txt fayli yuklanmoqda...</div>
     </div>
     <div id="quizRoot" class="quiz-questions">
@@ -193,7 +206,10 @@
     </div>
     <div class="footer-info" id="footerStats">
         ⚕️ Test tayyor bo‘lgach, javoblarni belgilashingiz mumkin.
-        <div><button id="resultBtn" class="result-btn" style="display:none;">📊 Natijalarni ko‘rish</button></div>
+        <div class="button-group">
+            <button id="resultBtn" class="action-btn" style="display:none;">📊 Natijalarni ko‘rish</button>
+            <button id="resetBtn" class="action-btn reset" style="display:none;">🔄 Testni qayta qilish</button>
+        </div>
         <div id="resultDisplay" class="stats-text"></div>
     </div>
 </div>
@@ -336,6 +352,9 @@
 
             radioInputs.forEach((radio) => {
                 radio.addEventListener('change', function(e) {
+                    // Agar bu savolga allaqachon javob berilgan bo'lsa, hech narsa qilma
+                    if (selectedAnswers[idx] !== null) return;
+
                     // Tozalash
                     optionDivs.forEach(div => {
                         div.classList.remove('correct-highlight', 'wrong-highlight');
@@ -367,13 +386,18 @@
                             feedbackSpan.style.color = '#b13b3b';
                         }
                     }
+
+                    // Javob tanlangandan so‘ng, barcha radio tugmalarni o‘chirish (boshqa tanlash imkoni yo‘q)
+                    radioInputs.forEach(r => { r.disabled = true; });
                 });
             });
         }
         document.getElementById('footerStats').innerHTML = `📊 Jami ${questionsData.length} ta savol yuklandi, lekin faqat birinchi ${limited.length} tasi ko‘rsatilmoqda. Javoblarni belgilang va natijani ko‘ring.`;
-        // Natija tugmasini ko‘rsatish
+        // Natija va reset tugmalarini ko‘rsatish
         const resultBtn = document.getElementById('resultBtn');
+        const resetBtn = document.getElementById('resetBtn');
         if (resultBtn) resultBtn.style.display = 'inline-block';
+        if (resetBtn) resetBtn.style.display = 'inline-block';
     }
 
     function showResults() {
@@ -389,8 +413,24 @@
                 correctCount++;
             }
         }
+        const incorrectCount = total - correctCount;
         const percent = Math.round((correctCount / total) * 100);
-        document.getElementById('resultDisplay').innerHTML = `🎯 Siz ${correctCount} ta savolga to‘g‘ri javob berdingiz (jami ${total} ta). Natija: ${percent}%`;
+        document.getElementById('resultDisplay').innerHTML = `📊 Natija: ${correctCount} ta to‘g‘ri, ${incorrectCount} ta noto‘g‘ri (jami ${total} ta). Ball: ${percent}%`;
+    }
+
+    // Testni qayta boshlash (qayta yuklash)
+    async function resetQuiz() {
+        // Tozalash
+        document.getElementById('quizRoot').innerHTML = `<div class="loader">📂 Test qayta boshlanmoqda...</div>`;
+        document.getElementById('resultDisplay').innerHTML = '';
+        document.getElementById('statusMessage').innerHTML = '⏳ testlar.txt fayli qayta yuklanmoqda...';
+        // Tugmalarni vaqtincha yashirish
+        const resultBtn = document.getElementById('resultBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        if (resultBtn) resultBtn.style.display = 'none';
+        if (resetBtn) resetBtn.style.display = 'none';
+        // Qayta yuklash
+        await loadAndStart();
     }
 
     function escapeHtml(str) {
@@ -429,13 +469,20 @@
             console.error(err);
             statusDiv.innerHTML = `❌ Xatolik: ${err.message}`;
             quizRoot.innerHTML = `<div class="error-box">⚠️ testlar.txt faylini yuklab bo‘lmadi.<br>Sababi: ${err.message}<br><br>📌 Fayl nomi <strong>testlar.txt</strong> va u index.html bilan bir papkada ekanligini tekshiring.</div>`;
+            // tugmalarni yashirish
+            const resultBtn = document.getElementById('resultBtn');
+            const resetBtn = document.getElementById('resetBtn');
+            if (resultBtn) resultBtn.style.display = 'none';
+            if (resetBtn) resetBtn.style.display = 'none';
         }
     }
 
     window.addEventListener('DOMContentLoaded', () => {
         loadAndStart();
-        const btn = document.getElementById('resultBtn');
-        if (btn) btn.addEventListener('click', showResults);
+        const resultBtn = document.getElementById('resultBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        if (resultBtn) resultBtn.addEventListener('click', showResults);
+        if (resetBtn) resetBtn.addEventListener('click', resetQuiz);
     });
 </script>
 </body>

@@ -133,11 +133,13 @@
         .footer-info {
             background: white;
             border-radius: 28px;
-            padding: 12px 20px;
+            padding: 24px;
             margin-top: 30px;
             text-align: center;
-            font-size: 0.8rem;
+            font-size: 0.95rem;
             color: #4f7f9c;
+            box-shadow: 0 -4px 14px rgba(0, 0, 0, 0.02);
+            border: 1px solid #e2edf5;
         }
         .loader, .error-box {
             text-align: center;
@@ -154,34 +156,39 @@
             background: #2c7da0;
             border: none;
             color: white;
-            font-size: 0.9rem;
+            font-size: 1rem;
             font-weight: 600;
-            padding: 10px 28px;
+            padding: 14px 36px;
             border-radius: 40px;
             cursor: pointer;
-            margin: 8px 10px;
+            margin: 10px 12px;
             transition: 0.2s;
             display: inline-block;
+            box-shadow: 0 4px 10px rgba(44, 125, 160, 0.2);
         }
         .action-btn.reset {
             background: #6c757d;
+            box-shadow: 0 4px 10px rgba(108, 117, 125, 0.2);
         }
         .action-btn.reset:hover {
             background: #5a6268;
         }
         .action-btn:hover {
             background: #1f617e;
+            transform: translateY(-1px);
         }
         .stats-text {
-            margin-top: 16px;
-            font-weight: 500;
-            font-size: 1rem;
+            margin-top: 20px;
+            font-weight: 600;
+            font-size: 1.1rem;
             background: #eef2fa;
-            padding: 8px;
+            padding: 12px 24px;
             border-radius: 40px;
+            display: inline-block;
+            color: #166b8f;
         }
         .button-group {
-            margin-top: 20px;
+            margin-top: 10px;
         }
         @media (max-width: 700px) {
             .question-header, .options-area {
@@ -189,6 +196,11 @@
             }
             .option {
                 padding: 6px 12px;
+            }
+            .action-btn {
+                width: 100%;
+                margin: 6px 0;
+                padding: 12px 20px;
             }
         }
     </style>
@@ -210,7 +222,7 @@
             <button id="resultBtn" class="action-btn" style="display:none;">📊 Natijalarni ko‘rish</button>
             <button id="resetBtn" class="action-btn reset" style="display:none;">🔄 Testni qayta qilish</button>
         </div>
-        <div id="resultDisplay" class="stats-text"></div>
+        <div><div id="resultDisplay" class="stats-text" style="display:none;"></div></div>
     </div>
 </div>
 
@@ -392,7 +404,7 @@
                 });
             });
         }
-        document.getElementById('footerStats').innerHTML = `📊 Jami ${questionsData.length} ta savol yuklandi, lekin faqat birinchi ${limited.length} tasi ko‘rsatilmoqda. Javoblarni belgilang va natijani ko‘ring.`;
+        document.getElementById('footerStats').childNodes[0].nodeValue = `📊 Jami ${questionsData.length} ta savol yuklandi, lekin faqat birinchi ${limited.length} tasi ko‘rsatilmoqda. Javoblarni belgilang va natijani ko‘ring.`;
         // Natija va reset tugmalarini ko‘rsatish
         const resultBtn = document.getElementById('resultBtn');
         const resetBtn = document.getElementById('resetBtn');
@@ -402,8 +414,10 @@
 
     function showResults() {
         const total = selectedAnswers.length;
+        const resultDisplay = document.getElementById('resultDisplay');
         if (total === 0) {
-            document.getElementById('resultDisplay').innerHTML = '⚠️ Hali hech qanday javob belgilanmagan.';
+            resultDisplay.style.display = 'inline-block';
+            resultDisplay.innerHTML = '⚠️ Hali hech qanday javob belgilanmagan.';
             return;
         }
         let correctCount = 0;
@@ -415,14 +429,18 @@
         }
         const incorrectCount = total - correctCount;
         const percent = Math.round((correctCount / total) * 100);
-        document.getElementById('resultDisplay').innerHTML = `📊 Natija: ${correctCount} ta to‘g‘ri, ${incorrectCount} ta noto‘g‘ri (jami ${total} ta). Ball: ${percent}%`;
+        resultDisplay.style.display = 'inline-block';
+        resultDisplay.innerHTML = `📊 Natija: ${correctCount} ta to‘g‘ri, ${incorrectCount} ta noto‘g‘ri (jami ${total} ta). Ball: ${percent}%`;
+        resultDisplay.scrollIntoView({ behavior: 'smooth' });
     }
 
     // Testni qayta boshlash (qayta yuklash)
     async function resetQuiz() {
         // Tozalash
         document.getElementById('quizRoot').innerHTML = `<div class="loader">📂 Test qayta boshlanmoqda...</div>`;
-        document.getElementById('resultDisplay').innerHTML = '';
+        const resultDisplay = document.getElementById('resultDisplay');
+        resultDisplay.innerHTML = '';
+        resultDisplay.style.display = 'none';
         document.getElementById('statusMessage').innerHTML = '⏳ testlar.txt fayli qayta yuklanmoqda...';
         // Tugmalarni vaqtincha yashirish
         const resultBtn = document.getElementById('resultBtn');
